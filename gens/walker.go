@@ -11,7 +11,7 @@ import (
 
 	"github.com/rs/zerolog"
 	"github.com/vektra/mockery/v2/pkg/logging"
-	"honnef.co/go/tools/config"
+	"gitlab.id.vin/nam.nguyen10/typeinfo/config"
 )
 
 type Walker struct {
@@ -114,6 +114,7 @@ type GeneratorVisitor struct {
 	config.Config
 	InPackage bool
 	Note      string
+	Osp       OutputStreamProvider
 	// The name of the output package, if InPackage is false (defaults to "mocks")
 	PackageName       string
 	PackageNamePrefix string
