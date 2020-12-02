@@ -240,8 +240,8 @@ func (p *Parser) packageStructs(pkg *types.Package, fileName string, declaredStr
 		for loop := 0; loop < n2; loop++ {
 			mm := typ.Method(loop)
 			sig, ok := mm.Type().Underlying().(*types.Signature)
-			if ok {
-				fmt.Println(sig.Params())
+			if !ok {
+				continue
 			}
 			method := &Method{Name: mm.Name(), Signature: sig}
 

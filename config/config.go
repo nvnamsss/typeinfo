@@ -20,4 +20,5 @@ type Config struct {
 	SrcPkg               string
 	Profile              string
 	Quiet                bool
+	Format               string
 }

@@ -155,20 +155,33 @@ func (this *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) erro
 			return
 		}
 	}()
-	format := NewJSONFormat()
-
-	f, err := os.Create(fmt.Sprintf("%v_%v%v", str.Name, "info", format.Extension()))
-	if err != nil {
-		log.Error().Msgf("Create file error: %v", err)
+	var format Format = NewJSONFormat()
+	switch this.Config.Format {
+	case "json":
+		format = NewJSONFormat()
+	case "txt":
+		format = NewTextFormatter()
+	default:
+		format = NewJSONFormat()
 	}
+
+	out, err, closer := this.Osp.GetStructWriter(ctx, str, format.Extension())
+	if err != nil {
+		log.Err(err).Msgf("Unable to get writer")
+		os.Exit(1)
+	}
+	defer closer()
+
 	generator := NewInformationGenerator(str, format)
 
 	if err := generator.Generate(ctx); err != nil {
 		log.Error().Msgf("Generate file error: %v", err)
 	}
 
-	if err := generator.Write(f); err != nil {
+	if err := generator.Write(out); err != nil {
 		log.Error().Msgf("Write file error: %v", err)
+	} else {
+		log.Info().Msgf("Write struct: %v", str.Name)
 	}
 
 	return nil

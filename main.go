@@ -63,20 +63,21 @@ func main() {
 func init() {
 	pFlags := rootCmd.PersistentFlags()
 	pFlags.StringVar(&cfgFile, "config", "", "config file to use")
-	pFlags.String("name", "", "name or matching regular expression of interface to generate mock for")
-	pFlags.String("output", "./mocks", "directory to write mocks to")
+	pFlags.String("name", "", "name or matching regular expression of interface to generate info for")
+	pFlags.String("output", "./infos", "directory to write infos to")
+	pFlags.String("format", "json", "file format info will be saved to")
 	pFlags.String("dir", ".", "directory to search for interfaces")
 	pFlags.BoolP("recursive", "r", false, "recurse search into sub-directories")
 	pFlags.Bool("all", false, "generates mocks for all found interfaces in all sub-directories")
 	pFlags.String("case", "camel", "name the mocked file using casing convention [camel, snake, underscore]")
 	pFlags.String("cpuprofile", "", "write cpu profile to file")
-	pFlags.Bool("version", false, "prints the installed version of mockery")
+	pFlags.Bool("version", false, "prints the installed version of tinfo")
 	pFlags.Bool("quiet", false, `suppresses logger output (equivalent to --log-level="")`)
 	pFlags.Bool("keeptree", false, "keep the tree structure of the original interface files into a different repository. Must be used with XX")
 	pFlags.String("filename", "", "name of generated file (only works with -name and no regex)")
 	pFlags.String("structname", "", "name of generated struct (only works with -name and no regex)")
 	pFlags.String("log-level", "info", "Level of logging")
-	pFlags.Bool("disable-version-string", false, "Do not insert the version string into the generated mock file.")
+	pFlags.Bool("disable-version-string", false, "Do not insert the version string into the generated info file.")
 
 	viper.BindPFlags(pFlags)
 }
@@ -139,7 +140,11 @@ func (r *RootApp) Run() error {
 		recursive = true
 		filter = regexp.MustCompile(".*")
 	} else {
-		log.Fatal().Msgf("Use --name to specify the name of the interface or --all for all interfaces found")
+		log.Fatal().Msgf("Use --name to specify the name of the struct or --all for all structs found")
+	}
+
+	if r.Config.Format == "" {
+		log.Warn().Msgf("Format is empty, default value json will be used instead")
 	}
 
 	if r.Config.Profile != "" {
