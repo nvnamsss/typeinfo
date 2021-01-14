@@ -46,3 +46,11 @@ func (Math) ClampFloat(value, min, max float64) float64 {
 
 	return value
 }
+
+func (Math) Sum(values ...int64) int64 {
+	var sum int64
+	for loop := range values {
+		sum += values[loop]
+	}
+	return sum
+}

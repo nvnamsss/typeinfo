@@ -11,17 +11,26 @@ type Struct struct {
 	Comment  string
 	methods  []*Method
 	File     *ast.File
-	Pkg      *types.Package
+	pkg      *types.Package
 	named    *types.Named
+
+	comments []*ast.CommentGroup
 }
 
-func (structs *Struct) Methods() []*Method {
-	return structs.methods
+func (this *Struct) Methods() []*Method {
+	methods := make([]*Method, 0, len(this.methods))
+	for _, m := range this.methods {
+		if m._func.Exported() {
+			methods = append(methods, m)
+		}
+	}
+
+	return methods
 }
 
-func (structs *Struct) Fields() []*Field {
+func (this *Struct) Fields() []*Field {
 	fields := make([]*Field, 0)
-	str, ok := structs.named.Underlying().(*types.Struct)
+	str, ok := this.named.Underlying().(*types.Struct)
 	if !ok {
 		return fields
 	}
@@ -30,8 +39,36 @@ func (structs *Struct) Fields() []*Field {
 
 	for loop := 0; loop < count; loop++ {
 		v := str.Field(loop)
-		fields = append(fields, &Field{Name: v.Name(), Var: v})
+		if v.Exported() {
+			fields = append(fields, &Field{_var: v})
+		}
 	}
-
 	return fields
 }
+
+func (this *Struct) String() string {
+	return this.named.String()
+}
+
+// func NewStruct(obj types.Object) *Struct {
+// 	if obj == nil {
+// 		return nil
+// 	}
+
+// 	obj.Type()
+// 	typ, ok := obj.Type().(*types.Named)
+// 	if !ok || typ.Obj().Pkg() == nil {
+// 		return nil
+// 	}
+
+// 	name = typ.Obj().Name()
+
+// 	str := &Struct{
+// 		Name:     name,
+// 		pkg:      pkg,
+// 		FileName: fileName,
+// 		named:    typ,
+// 		methods:  []*Method{},
+// 	}
+// 	return &Struct{}
+// }

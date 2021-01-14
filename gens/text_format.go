@@ -29,7 +29,7 @@ func (TextFormatter) Fields(fields []*Field) string {
 
 	for _, f := range fields {
 		builder.WriteString(NewLine)
-		builder.WriteString(fmt.Sprintf("- %v: %v", f.Name, f.Var.Type().String()))
+		builder.WriteString(fmt.Sprintf("- %v: %v", f.Name(), f.Type()))
 	}
 
 	return builder.String()
@@ -42,7 +42,7 @@ func (TextFormatter) Methods(methods []*Method) string {
 
 	for _, m := range methods {
 		builder.WriteString(NewLine)
-		builder.WriteString(fmt.Sprintf("- %v: %v %v", m.Name, m.Signature.Params(), m.Signature.Results()))
+		builder.WriteString(fmt.Sprintf("- %v: %v %v", m.Name(), m.signature.Params(), m.signature.Results()))
 	}
 
 	return builder.String()

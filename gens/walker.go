@@ -24,7 +24,6 @@ type Walker struct {
 }
 
 type WalkerVisitor interface {
-	VisitWalk(context.Context, *Interface) error
 	VisitStruct(context.Context, *Struct) error
 }
 
@@ -39,21 +38,6 @@ func (this *Walker) Walk(ctx context.Context, visitor WalkerVisitor) (generated 
 
 	if err := parser.Load(); err != nil {
 		fmt.Printf("Error walking: %v", err)
-	}
-
-	for _, iface := range parser.Interfaces() {
-		if !this.Filter.MatchString(iface.Name) {
-			continue
-		}
-		err := visitor.VisitWalk(ctx, iface)
-		if err != nil {
-			fmt.Fprintf(os.Stderr, "Error walking %s: %s\n", iface.Name, err)
-			os.Exit(1)
-		}
-		generated = true
-		if this.LimitOne {
-			return
-		}
 	}
 
 	for _, str := range parser.Structs() {
@@ -112,40 +96,14 @@ func (this *Walker) doWalk(ctx context.Context, p *Parser, dir string, visitor W
 
 type GeneratorVisitor struct {
 	config.Config
-	InPackage bool
-	Note      string
-	Osp       OutputStreamProvider
-	// The name of the output package, if InPackage is false (defaults to "mocks")
+	InPackage         bool
+	Note              string
+	Osp               OutputStreamProvider
 	PackageName       string
 	PackageNamePrefix string
-	StructName        string
 }
 
-func (this *GeneratorVisitor) VisitWalk(ctx context.Context, iface *Interface) error {
-	log := zerolog.Ctx(ctx).With().
-		Str(logging.LogKeyInterface, iface.Name).
-		Str(logging.LogKeyQualifiedName, iface.QualifiedName).
-		Logger()
-	ctx = log.WithContext(ctx)
-
-	defer func() {
-		if r := recover(); r != nil {
-			log.Error().Msgf("Unable to generate information: %s", r)
-			return
-		}
-	}()
-
-	// generator := NewInformationGenerator()
-
-	// err := generator.Generate()
-	// if err != nil {
-	// 	return err
-	// }
-
-	return nil
-}
-
-func (this *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) error {
+func (gv *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) error {
 	log := zerolog.Ctx(ctx).With().
 		Str(logging.LogKeyInterface, str.Name).
 		Logger()
@@ -156,7 +114,7 @@ func (this *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) erro
 		}
 	}()
 	var format Format = NewJSONFormat()
-	switch this.Config.Format {
+	switch gv.Config.Format {
 	case "json":
 		format = NewJSONFormat()
 	case "txt":
@@ -165,12 +123,11 @@ func (this *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) erro
 		format = NewJSONFormat()
 	}
 
-	out, err, closer := this.Osp.GetStructWriter(ctx, str, format.Extension())
+	out, err, closer := gv.Osp.GetStructWriter(ctx, str, format.Extension())
 	if err != nil {
 		log.Err(err).Msgf("Unable to get writer")
 		os.Exit(1)
 	}
-	defer closer()
 
 	generator := NewInformationGenerator(str, format)
 
@@ -184,5 +141,6 @@ func (this *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) erro
 		log.Info().Msgf("Write struct: %v", str.Name)
 	}
 
+	_ = closer()
 	return nil
 }

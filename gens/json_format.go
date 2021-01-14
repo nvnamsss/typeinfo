@@ -1,28 +1,39 @@
 package gens
 
 import (
+	"context"
 	"encoding/json"
 	"strings"
+)
+
+const (
+	fieldName  = `"field":`
+	methodName = `"function":`
 )
 
 type JSONFormat struct {
 }
 
-type structtype struct {
+type jsonFormat struct {
+	Field    map[string]varType
+	Function []methodType
+}
+
+type structType struct {
 	Name        string
 	Description string
 }
 
-type methodtype struct {
+type methodType struct {
 	Name        string
 	Description string
-	Params      []vartype
+	Params      []varType
 	Return      string
 }
 
-type vartype struct {
+type varType struct {
 	Name string
-	Type string
+	Type interface{}
 }
 
 func (JSONFormat) Extension() string {
@@ -37,9 +48,9 @@ func (JSONFormat) Separate() string {
 	return ","
 }
 
-func (JSONFormat) Struct(str *Struct) string {
+func (this *JSONFormat) Struct(str *Struct) string {
 	builder := strings.Builder{}
-	strtype := structtype{
+	strtype := structType{
 		Name:        str.Name,
 		Description: str.Comment,
 	}
@@ -50,50 +61,66 @@ func (JSONFormat) Struct(str *Struct) string {
 	return builder.String()
 }
 
-func (JSONFormat) Methods(methods []*Method) string {
+func (this *JSONFormat) Methods(methods []*Method) string {
 	builder := strings.Builder{}
-	ms := []methodtype{}
+	ms := []methodType{}
 	for _, m := range methods {
-		jm := methodtype{
-			Name:        m.Name,
+		jm := methodType{
+			Name:        m.Name(),
 			Description: m.Comment,
 		}
-		paramsCount := m.Signature.Params().Len()
-		for loop := 0; loop < paramsCount; loop++ {
-			jm.Params = append(jm.Params, vartype{
-				Name: m.Signature.Params().At(loop).Name(),
-				Type: m.Signature.Params().At(loop).Type().String(),
+
+		params := m.Params()
+		jm.Params = make([]varType, 0, len(params))
+		for _, p := range params {
+			jm.Params = append(jm.Params, varType{
+				Name: p.Name(),
+				Type: p.Type().String(),
 			})
 		}
 
-		if m.Signature.Results().Len() > 0 {
-			jm.Return = m.Signature.Results().At(0).Type().String()
+		if r := m.Return(); r != nil {
+			jm.Return = r.Type().String()
 		}
+
 		ms = append(ms, jm)
 	}
 
 	bytes, _ := json.Marshal(ms)
-	builder.WriteString("\"methods\":")
+	builder.WriteString(methodName)
 	builder.Write(bytes)
 
 	return builder.String()
 }
 
-func (JSONFormat) Fields(fields []*Field) string {
-	builder := strings.Builder{}
-	vs := []vartype{}
+func (this *JSONFormat) Fields(fields []*Field) string {
+	var (
+		builder  = strings.Builder{}
+		varTypes = make(map[string]interface{}, len(fields))
+	)
+
 	for _, f := range fields {
-		vs = append(vs, vartype{Name: f.Name, Type: f.Var.Type().String()})
+		if str := f.Struct(); str != nil {
+			g := NewInformationGenerator(str, this)
+			g.Generate(context.TODO())
+
+			jsonFormat := jsonFormat{}
+			json.Unmarshal(g.buf.Bytes(), &jsonFormat)
+			varTypes[f.Name()] = jsonFormat
+		} else {
+			varTypes[f.Name()] = f.Type().String()
+		}
+
 	}
 
-	bytes, _ := json.Marshal(vs)
-	builder.WriteString("\"fields\":")
+	bytes, _ := json.Marshal(varTypes)
+	builder.WriteString(fieldName)
 	builder.Write(bytes)
 
 	return builder.String()
 }
 
-func (JSONFormat) End() string {
+func (this *JSONFormat) End() string {
 	return "}"
 }
 

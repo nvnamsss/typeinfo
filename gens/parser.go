@@ -7,7 +7,6 @@ import (
 	"go/types"
 	"io/ioutil"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/rs/zerolog"
@@ -33,7 +32,7 @@ type Parser struct {
 
 func NewParser(buildTags []string) *Parser {
 	var conf packages.Config
-	conf.Mode = packages.LoadSyntax
+	conf.Mode = packages.NeedFiles | packages.NeedName | packages.NeedTypes | packages.NeedTypesInfo | packages.NeedSyntax
 	if len(buildTags) > 0 {
 		conf.BuildFlags = []string{"-tags", strings.Join(buildTags, ",")}
 	}
@@ -45,13 +44,6 @@ func NewParser(buildTags []string) *Parser {
 }
 
 func (p *Parser) Parse(ctx context.Context, path string) error {
-	// To support relative paths to mock targets w/ vendor deps, we need to provide eventual
-	// calls to build.Context.Import with an absolute path. It needs to be absolute because
-	// Import will only find the vendor directory if our target path for parsing is under
-	// a "root" (GOROOT or a GOPATH). Only absolute paths will pass the prefix-based validation.
-	//
-	// For example, if our parse target is "./ifaces", Import will check if any "roots" are a
-	// prefix of "ifaces" and decide to skip the vendor search.
 	path, err := filepath.Abs(path)
 	if err != nil {
 		return err
@@ -156,7 +148,6 @@ func (nv *NodeVisitor) Visit(node ast.Node) ast.Visitor {
 	case *ast.CommentGroup:
 		nv.comments = append(nv.comments, n)
 	}
-
 	return nv
 }
 
@@ -170,31 +161,6 @@ func (p *Parser) Load() error {
 		entry.comments = nv.comments
 	}
 	return nil
-}
-
-func (p *Parser) Find(name string) (*Interface, error) {
-	for _, entry := range p.entries {
-		for _, iface := range entry.interfaces {
-			if iface == name {
-				list := p.packageInterfaces(entry.pkg.Types, entry.fileName, []string{name}, nil)
-				if len(list) > 0 {
-					return list[0], nil
-				}
-			}
-		}
-	}
-	return nil, ErrNotInterface
-}
-
-func (p *Parser) Interfaces() []*Interface {
-	ifaces := make(sortableIFaceList, 0)
-	for _, entry := range p.entries {
-		declaredIfaces := entry.interfaces
-		ifaces = p.packageInterfaces(entry.pkg.Types, entry.fileName, declaredIfaces, ifaces)
-	}
-
-	sort.Sort(ifaces)
-	return ifaces
 }
 
 func (p *Parser) Structs() []*Struct {
@@ -212,110 +178,59 @@ func (p *Parser) packageStructs(pkg *types.Package, fileName string, declaredStr
 
 	for _, name := range declaredStructs {
 		obj := scope.Lookup(name)
+
 		if obj == nil {
 			continue
 		}
 
-		obj.Type()
 		typ, ok := obj.Type().(*types.Named)
-		if !ok {
+		if !ok || typ.Obj().Pkg() == nil {
 			continue
 		}
 
 		name = typ.Obj().Name()
 
-		if typ.Obj().Pkg() == nil {
-			continue
-		}
-
-		elem := &Struct{
+		str := &Struct{
 			Name:     name,
-			Pkg:      pkg,
+			pkg:      pkg,
 			FileName: fileName,
 			named:    typ,
 			methods:  []*Method{},
 		}
-		// str, ok := typ.Underlying().(*types.Struct)
+
 		n2 := typ.NumMethods()
+		prevPos := 0
 		for loop := 0; loop < n2; loop++ {
-			mm := typ.Method(loop)
-			sig, ok := mm.Type().Underlying().(*types.Signature)
+			f := typ.Method(loop)
+			sig, ok := f.Type().Underlying().(*types.Signature)
 			if !ok {
 				continue
 			}
-			method := &Method{Name: mm.Name(), Signature: sig}
 
-			if index := searchComment(comments, int(mm.Pos())); index != -1 {
+			method := &Method{_func: f, signature: sig}
+
+			if index := searchComment(comments, int(f.Pos()), prevPos); index != -1 {
 				method.Comment = comments[index].Text()
 			}
 
-			elem.methods = append(elem.methods, method)
+			str.methods = append(str.methods, method)
+			prevPos = int(f.Pos())
 		}
 
-		structs = append(structs, elem)
+		structs = append(structs, str)
 	}
 
 	return structs
 }
 
-func (p *Parser) packageInterfaces(
-	pkg *types.Package,
-	fileName string,
-	declaredInterfaces []string,
-	ifaces []*Interface) []*Interface {
-	scope := pkg.Scope()
-	for _, name := range declaredInterfaces {
-		obj := scope.Lookup(name)
-		if obj == nil {
-			continue
-		}
-
-		typ, ok := obj.Type().(*types.Named)
-		if !ok {
-			continue
-		}
-
-		name = typ.Obj().Name()
-
-		if typ.Obj().Pkg() == nil {
-			continue
-		}
-
-		elem := &Interface{
-			Name:          name,
-			Pkg:           pkg,
-			QualifiedName: pkg.Path(),
-			FileName:      fileName,
-			NamedType:     typ,
-		}
-
-		iface, ok := typ.Underlying().(*types.Interface)
-		if ok {
-			elem.IsFunction = false
-			elem.ActualInterface = iface
-		} else {
-			sig, ok := typ.Underlying().(*types.Signature)
-			if !ok {
-				continue
-			}
-
-			elem.IsFunction = true
-			elem.SingleFunction = &Method{Name: "Execute", Signature: sig}
-		}
-
-		ifaces = append(ifaces, elem)
-	}
-
-	return ifaces
-}
-
-func searchComment(comments []*ast.CommentGroup, pos int) int {
+// Naive search, will be improved later
+func searchComment(comments []*ast.CommentGroup, pos int, upper int) int {
 	length := len(comments)
 	for loop := length - 1; loop >= 0; loop-- {
-		if int(comments[loop].Pos()) < pos {
+		commentPos := int(comments[loop].Pos())
+		if commentPos <= pos && commentPos > upper {
 			return loop
 		}
 	}
-
 	return -1
 }
