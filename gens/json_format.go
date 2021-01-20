@@ -25,10 +25,10 @@ type structType struct {
 }
 
 type methodType struct {
-	Name        string
+	Name        string `json:"-"`
 	Description string
 	Params      []varType
-	Return      string
+	Return      varType
 }
 
 type varType struct {
@@ -63,7 +63,8 @@ func (this *JSONFormat) Struct(str *Struct) string {
 
 func (this *JSONFormat) Methods(methods []*Method) string {
 	builder := strings.Builder{}
-	ms := []methodType{}
+	ms := make(map[string]methodType)
+	// ms := []methodType{}
 	for _, m := range methods {
 		jm := methodType{
 			Name:        m.Name(),
@@ -80,10 +81,14 @@ func (this *JSONFormat) Methods(methods []*Method) string {
 		}
 
 		if r := m.Return(); r != nil {
-			jm.Return = r.Type().String()
+			jm.Return = varType{
+				Name: r.Name(),
+				Type: r.Type().String(),
+			}
 		}
 
-		ms = append(ms, jm)
+		ms[jm.Name] = jm
+		// ms = append(ms, jm)
 	}
 
 	bytes, _ := json.Marshal(ms)

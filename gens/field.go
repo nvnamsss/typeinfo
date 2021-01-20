@@ -18,7 +18,6 @@ func (f *Field) Name() string {
 
 // Type returns type of field
 func (f *Field) Type() Type {
-
 	return f
 }
 

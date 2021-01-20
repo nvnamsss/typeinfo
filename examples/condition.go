@@ -13,7 +13,7 @@ type Condition struct {
 }
 
 // Get location comment
-func (f *Condition) GetLocation() string {
+func (f *Condition) GetLocation() (location string) {
 	//implement here
 	return "Ho Chi Minh"
 }
@@ -41,6 +41,6 @@ func (f *Condition) RewardClaimed(userID int64, campaignID int64) int64 {
 
 //   RewardClaimed
 
-func (f *Condition) RewardClaimedTimes(userID int64, campaignID int64) int64 {
+func (f *Condition) RewardClaimedTimes(userID int64, campaignID int64) (claimedTimes int64) {
 	return 0
 }
