@@ -56,7 +56,7 @@ func init() {
 	pFlags := rootCmd.PersistentFlags()
 	pFlags.String("name", "", "name or matching regular expression of interface to generate info for")
 	pFlags.String("output", "./infos", "directory to write generated infos to")
-	pFlags.String("format", "json", "file format info will be saved to")
+	pFlags.String("format", "jf", "file format info will be saved to [jf1 jf2]")
 	pFlags.String("dir", ".", "directory to search for generating struct")
 	pFlags.BoolP("recursive", "r", false, "recurse search into sub-directories")
 	pFlags.Bool("all", false, "generates info for all struct that found in directory")

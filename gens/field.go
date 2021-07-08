@@ -1,6 +1,8 @@
 package gens
 
-import "go/types"
+import (
+	"go/types"
+)
 
 type Type interface {
 	String() string
@@ -22,39 +24,49 @@ func (f *Field) Type() Type {
 }
 
 func (f *Field) Struct() *Struct {
-	if f._var.Embedded() {
-		if named, ok := f._var.Type().(*types.Named); ok {
-			name := named.Obj().Name()
+	var (
+		named *types.Named
+	)
 
-			str := &Struct{
-				Name:    name,
-				named:   named,
-				methods: []*Method{},
-			}
-
-			n2 := named.NumMethods()
-			// prevPos := 0
-			for loop := 0; loop < n2; loop++ {
-				f := named.Method(loop)
-				sig, ok := f.Type().Underlying().(*types.Signature)
-				if !ok {
-					continue
-				}
-
-				method := &Method{_func: f, signature: sig}
-
-				// if index := searchComment(comments, int(f.Pos()), prevPos); index != -1 {
-				// 	method.Comment = comments[index].Text()
-				// }
-
-				str.methods = append(str.methods, method)
-				// prevPos = int(f.Pos())
-			}
-			return &Struct{
-				named: named,
-			}
+	if ss, ok := f._var.Type().Underlying().(*types.Pointer); ok {
+		if n, ok := ss.Elem().(*types.Named); ok {
+			named = n
 		}
 	}
+
+	if n, ok := f._var.Type().(*types.Named); ok {
+		named = n
+	}
+
+	if named != nil {
+		name := named.Obj().Name()
+
+		str := &Struct{
+			Name:    name,
+			named:   named,
+			methods: []*Method{},
+		}
+
+		n2 := named.NumMethods()
+		// prevPos := 0
+		for loop := 0; loop < n2; loop++ {
+			f := named.Method(loop)
+			sig, ok := f.Type().Underlying().(*types.Signature)
+			if !ok {
+				continue
+			}
+
+			method := &Method{_func: f, signature: sig}
+			str.methods = append(str.methods, method)
+		}
+		return &Struct{
+			named: named,
+		}
+	}
+	// if named, ok := f._var.Type().(*types.Named); ok {
+
+	// }
+
 	return nil
 }
 

@@ -3,6 +3,7 @@ module gitlab.id.vin/nam.nguyen10/typeinfo
 go 1.15
 
 require (
+	github.com/buger/jsonparser v1.1.1
 	github.com/pkg/errors v0.9.1
 	github.com/rs/zerolog v1.20.0
 	github.com/spf13/cobra v1.1.1

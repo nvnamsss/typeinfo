@@ -26,13 +26,10 @@ func NewInformationGenerator(str *Struct, format Format) *InformationGenerator {
 }
 
 func (g *InformationGenerator) Generate(ctx context.Context) error {
-	g.printf(g.format.Start())
-	// g.printf(g.format.Struct(g.str))
-	// g.printf(g.format.Separate())
-	g.printf(g.format.Fields(g.str.Fields()))
-	g.printf(g.format.Separate())
-	g.printf(g.format.Methods(g.str.Methods()))
-	g.printf(g.format.End())
+	g.format.SetFields(g.str.Fields())
+	g.format.SetMethods(g.str.Methods())
+	g.printf(g.format.Format())
+
 	return nil
 }
 
@@ -44,4 +41,8 @@ func (g *InformationGenerator) Write(w io.Writer) error {
 
 func (g *InformationGenerator) ToString() string {
 	return g.buf.String()
+}
+
+func (g *InformationGenerator) Bytes() []byte {
+	return g.buf.Bytes()
 }

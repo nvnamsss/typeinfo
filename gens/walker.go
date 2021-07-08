@@ -113,14 +113,12 @@ func (gv *GeneratorVisitor) VisitStruct(ctx context.Context, str *Struct) error 
 			return
 		}
 	}()
-	var format Format = NewJSONFormat()
+	var format Format
 	switch gv.Config.Format {
-	case "json":
-		format = NewJSONFormat()
-	case "txt":
-		format = NewTextFormatter()
+	case "jf2":
+		format = NewJF2()
 	default:
-		format = NewJSONFormat()
+		format = NewJF1()
 	}
 
 	out, err, closer := gv.Osp.GetStructWriter(ctx, str, format.Extension())

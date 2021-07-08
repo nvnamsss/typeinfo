@@ -1,6 +1,6 @@
 package config
 
-var SemVer = "0.0.0"
+var SemVer = "0.1.0"
 
 type Config struct {
 	Name      string
